@@ -149,8 +149,7 @@ checksum = "c3d036a3c4ab069c7b410a2ce876bd74808d2d0888a82667669f8e783a898bf1"
 [[package]]
 name = "arboard"
 version = "3.6.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0348a1c054491f4bfe6ab86a7b6ab1e44e45d899005de92f58b3df180b36ddaf"
+source = "git+https://github.com/iced-mobile/arboard.git?rev=0c813aba1b961a06c2d0a882c1e1eaba8a0ab766#0c813aba1b961a06c2d0a882c1e1eaba8a0ab766"
 dependencies = [
  "clipboard-win",
  "image",
@@ -162,7 +161,7 @@ dependencies = [
  "objc2-foundation",
  "parking_lot",
  "percent-encoding",
- "windows-sys 0.60.2",
+ "windows-sys 0.52.0",
  "wl-clipboard-rs",
  "x11rb",
 ]
