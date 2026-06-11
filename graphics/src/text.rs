@@ -150,6 +150,18 @@ pub fn font_system() -> &'static RwLock<FontSystem> {
             raw.db_mut().set_monospace_family("Consolas");
         }
 
+        // Load system fonts for Android
+        // https://github.com/pop-os/cosmic-text/issues/243#issue-2189977938
+        #[cfg(target_os = "android")]
+        {
+            raw.db_mut().load_fonts_dir("/system/fonts");
+            raw.db_mut().set_sans_serif_family("Roboto");
+            raw.db_mut().set_serif_family("Noto Serif");
+            raw.db_mut().set_monospace_family("Droid Sans Mono"); // Cutive Mono looks more printer-like
+            raw.db_mut().set_cursive_family("Dancing Script");
+            raw.db_mut().set_fantasy_family("Dancing Script");
+        }
+
         RwLock::new(FontSystem {
             raw,
             loaded_fonts: HashSet::new(),
