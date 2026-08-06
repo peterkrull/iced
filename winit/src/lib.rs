@@ -26,6 +26,8 @@ pub use program::graphics;
 pub use runtime::futures;
 pub use winit;
 
+#[cfg(target_os = "android")]
+pub mod android;
 pub mod clipboard;
 pub mod conversion;
 
@@ -91,6 +93,8 @@ where
     P::Theme: theme::Base,
 {
     use winit::platform::android::EventLoopBuilderExtAndroid;
+
+    let _ = android::ANDROID_APP.set(app.clone());
 
     let event_loop = EventLoop::with_user_event()
         .with_android_app(app)
