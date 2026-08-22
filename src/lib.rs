@@ -507,6 +507,10 @@ compile_error!(
     Available options: x11, wayland."
 );
 
+
+#[cfg(target_os = "android")]
+pub use iced_winit::android;
+
 #[cfg(feature = "highlighter")]
 pub use iced_highlighter as highlighter;
 
