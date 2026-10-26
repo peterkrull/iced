@@ -205,7 +205,11 @@ impl<P: Program> Application<P> {
         Ok(shell::run_android(program, app)?)
     }
 
-    fn run_inner(self) -> impl Program {
+    fn run_inner(self) -> impl Program
+    where
+        Self: 'static,
+        P::Message: message::MaybeDebug + message::MaybeClone,
+    {
         #[cfg(feature = "debug")]
         iced_debug::init(iced_debug::Metadata {
             name: P::name(),
