@@ -318,6 +318,10 @@ impl graphics::Compositor for Compositor {
     }
 
     fn configure_surface(&mut self, surface: &mut Self::Surface, width: u32, height: u32) {
+        // A reconfigure waits for the GPU to go idle. Submissions from the
+        // image worker must not land during that wait (see `Engine`).
+        let _guard = self.engine.lock_submits();
+
         surface.configure(
             &self.engine.device,
             &wgpu::SurfaceConfiguration {

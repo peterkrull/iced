@@ -8,7 +8,10 @@ use worker::Worker;
 #[cfg(feature = "image")]
 use std::collections::HashMap;
 
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
+
+#[cfg(feature = "image")]
+use crate::engine::lock_submits;
 
 pub struct Cache {
     atlas: Atlas,
@@ -16,6 +19,8 @@ pub struct Cache {
     raster: Raster,
     #[cfg(feature = "svg")]
     vector: crate::image::vector::Cache,
+    #[cfg(feature = "image")]
+    submit_lock: Arc<Mutex<()>>,
     #[cfg(all(feature = "image", not(target_arch = "wasm32")))]
     worker: Worker,
 }
@@ -27,9 +32,20 @@ impl Cache {
         backend: wgpu::Backend,
         layout: wgpu::BindGroupLayout,
         _shell: &Shell,
+        submit_lock: Arc<Mutex<()>>,
     ) -> Self {
         #[cfg(all(feature = "image", not(target_arch = "wasm32")))]
-        let worker = Worker::new(device, _queue, backend, layout.clone(), _shell);
+        let worker = Worker::new(
+            device,
+            _queue,
+            backend,
+            layout.clone(),
+            _shell,
+            Arc::clone(&submit_lock),
+        );
+
+        #[cfg(not(feature = "image"))]
+        let _ = submit_lock;
 
         Self {
             atlas: Atlas::new(device, backend, layout),
@@ -41,6 +57,8 @@ impl Cache {
             },
             #[cfg(feature = "svg")]
             vector: crate::image::vector::Cache::default(),
+            #[cfg(feature = "image")]
+            submit_lock,
             #[cfg(all(feature = "image", not(target_arch = "wasm32")))]
             worker,
         }
@@ -116,7 +134,10 @@ impl Cache {
                 );
 
                 self.raster.belt.finish();
-                let submission = queue.submit([encoder.finish()]);
+                let submission = {
+                    let _guard = lock_submits(&self.submit_lock);
+                    queue.submit([encoder.finish()])
+                };
                 self.raster.belt.recall();
 
                 let Some(entry) = entry else {
@@ -382,12 +403,13 @@ fn load_image<'a>(
 mod worker {
     use crate::core::Bytes;
     use crate::core::image;
+    use crate::engine::lock_submits;
     use crate::graphics::Shell;
     use crate::image::atlas::{self, Atlas};
     use crate::image::raster;
 
-    use std::sync::Arc;
     use std::sync::mpsc;
+    use std::sync::{Arc, Mutex};
     use std::thread;
 
     pub struct Worker {
@@ -404,6 +426,7 @@ mod worker {
             backend: wgpu::Backend,
             texture_layout: wgpu::BindGroupLayout,
             shell: &Shell,
+            submit_lock: Arc<Mutex<()>>,
         ) -> Self {
             let (jobs_sender, jobs_receiver) = mpsc::sync_channel(1_000);
             let (quit_sender, quit_receiver) = mpsc::sync_channel(1);
@@ -419,6 +442,7 @@ mod worker {
                 jobs: jobs_receiver,
                 output: work_sender,
                 quit: quit_receiver,
+                submit_lock,
             };
 
             let handle = thread::spawn(move || instance.run());
@@ -472,6 +496,7 @@ mod worker {
         jobs: mpsc::Receiver<Job>,
         output: mpsc::SyncSender<Work>,
         quit: mpsc::Receiver<()>,
+        submit_lock: Arc<Mutex<()>>,
     }
 
     #[derive(Debug)]
@@ -585,7 +610,10 @@ mod worker {
             let shell = self.shell.clone();
 
             self.belt.finish();
-            let submission = self.queue.submit([encoder.finish()]);
+            let submission = {
+                let _guard = lock_submits(&self.submit_lock);
+                self.queue.submit([encoder.finish()])
+            };
             self.belt.recall();
 
             let bind_group = atlas.bind_group().clone();

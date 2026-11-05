@@ -168,7 +168,7 @@ impl Renderer {
         let encoder = self.draw(clear_color, frame, viewport);
 
         self.staging_belt.finish();
-        let submission = self.engine.queue.submit([encoder.finish()]);
+        let submission = self.engine.submit([encoder.finish()]);
         self.staging_belt.recall();
         submission
     }
@@ -259,7 +259,7 @@ impl Renderer {
         );
 
         self.staging_belt.finish();
-        let index = self.engine.queue.submit([encoder.finish()]);
+        let index = self.engine.submit([encoder.finish()]);
         self.staging_belt.recall();
 
         let slice = output_buffer.slice(..);
